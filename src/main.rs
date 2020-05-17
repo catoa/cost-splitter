@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::env;
 use std::io;
+use titlecase::titlecase;
 
 #[derive(Debug)]
 struct Charge {
@@ -37,57 +39,39 @@ impl Action {
     }
 }
 
-fn print_charge_breakdown(map: HashMap<String, Vec<Charge>>, subtotal: f64, taxes_and_fees: f64) {
+fn print_charge_breakdown(map: HashMap<String, Vec<Charge>>, subtotal: f64) {
+    let bill_total = request_bill_total(subtotal);
+    let total_fees = bill_total - subtotal;
     for (person, charges) in &map {
-        let charges_sum: f64 = charges.iter().map(|c| c.cost).sum();
+        let mut charges_sum: f64 = 0.0;
         println!("\n{}", person);
         println!("==========");
-        println!("Total Charges: {}", charges_sum);
+        for charge in charges {
+            charges_sum += charge.cost;
+            println!("{}: ${:.2}", titlecase(&charge.name), charge.cost);
+        }
+        println!("Total Charges: ${}", charges_sum);
         let pct_of_subtotal = charges_sum / subtotal;
         println!(
-            "Percent of Subtotal (Total Charges / Subtotal): {:.5}",
+            "Percent of Subtotal (Total Charges / Subtotal): {:.2}",
             pct_of_subtotal
         );
-        let fees_owed = pct_of_subtotal * taxes_and_fees;
-        println!("Taxes and Fees owed: {}", fees_owed);
+        let fees_owed = pct_of_subtotal * total_fees;
+        println!("Fees owed: ${:.2}", fees_owed);
         let amt_owed = charges_sum + fees_owed;
-        println!("Total Owed: {:.2}", amt_owed);
+        println!("Total Owed: ${:.2}", amt_owed);
     }
 }
 
-fn main() {
-    println!("Enter the number of persons");
-    let mut response = String::new();
-
-    io::stdin()
-        .read_line(&mut response)
-        .expect("There was an error receiving the number of persons");
-
-    let num_persons = response.trim().parse::<i64>().unwrap();
-    response.clear();
-
-    println!("Number of users: {}\n", num_persons);
-
-    let mut persons: Vec<String> = Vec::new();
-    for i in 0..num_persons {
-        println!("\nEnter the name of friend #{}", i + 1);
-
-        io::stdin()
-            .read_line(&mut response)
-            .expect("There was an error reading in the users name");
-
-        persons.push(response.trim().to_string().clone());
-        response.clear();
-    }
-
-    println!("\nEnter the name and cost of the items for each person");
-    println!("Type 'Done' when are you finished entering items for a person");
-
+fn process_individual_charges(persons: &[String]) -> (HashMap<String, Vec<Charge>>, f64) {
     let mut charge_map: HashMap<String, Vec<Charge>> = HashMap::new();
     let mut subtotal: f64 = 0.0;
-    for person in &persons {
+    let mut response = String::new();
+
+    println!("\nEnter the cost of the items for each person");
+    println!("Type 'Done' when are you finished entering items for a person");
+    for person in persons {
         println!("\nEntering items for {}", person);
-        response.clear();
         loop {
             io::stdin()
                 .read_line(&mut response)
@@ -96,7 +80,10 @@ fn main() {
             let action = Action::parse_input(&response);
 
             match action {
-                Action::Done => break,
+                Action::Done => {
+                    response.clear();
+                    break;
+                }
                 Action::AddCharge { charge } => {
                     subtotal += charge.cost;
                     charge_map
@@ -111,14 +98,31 @@ fn main() {
             response.clear();
         }
     }
-    response.clear();
-    println!("\nEnter the total taxes, fees, tips, etc.\n");
+    (charge_map, subtotal)
+}
 
-    io::stdin()
-        .read_line(&mut response)
-        .expect("Unable to read input string");
+fn request_bill_total(subtotal: f64) -> f64 {
+    println!("\nEnter the total for the bill.\n");
+    let mut response = String::new();
+    loop {
+        io::stdin()
+            .read_line(&mut response)
+            .expect("Unable to read input string");
 
-    let taxes_and_fees: f64 = response.trim().parse().unwrap();
+        let bill_total: f64 = response.trim().parse().unwrap();
 
-    print_charge_breakdown(charge_map, subtotal, taxes_and_fees);
+        if bill_total > subtotal {
+            return bill_total;
+        } else {
+            println!("The amount you entered was less than the subtotal.\nPlease try again.\n");
+            response.clear();
+        }
+    }
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let persons: &[String] = &args[1..];
+    let (charge_map, subtotal) = process_individual_charges(persons);
+    print_charge_breakdown(charge_map, subtotal);
 }
