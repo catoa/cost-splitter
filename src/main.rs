@@ -1,23 +1,15 @@
 use clap::Parser;
 
-mod lib;
-
-use lib::{print_charge_breakdown, process_individual_charges};
+use cost_splitter::charges;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
-struct Args {
-    // Name of the person to greet
+struct Cli {
+    #[clap(short, long, multiple_values = true)]
     names: String,
 }
 
 fn main() {
-    let args = Args::parse();
-    let persons = args
-        .names
-        .split(",")
-        .map(|name| name.to_owned())
-        .collect::<Vec<String>>();
-    let (charge_map, subtotal) = process_individual_charges(&persons);
-    print_charge_breakdown(charge_map, subtotal);
+    let args = Cli::parse();
+    charges::process_charges(args.names);
 }
