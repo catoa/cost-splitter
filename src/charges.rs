@@ -67,14 +67,14 @@ fn print_charge_breakdown(
         println!("{}", "==========".blue());
         for charge in charges {
             charges_sum += charge.cost;
-            let cost_string = format!("${:.2}", charge.cost.to_string()).green().bold();
+            let cost_string = format!("${:.2}", charge.cost).green().bold();
             println!(
                 "{}: {}",
                 titlecase(&charge.name).bright_white().bold(),
                 cost_string
             )
         }
-        let total_charges_string = format!("${}", charges_sum.to_string()).green();
+        let total_charges_string = format!("${:.2}", charges_sum).green();
         println!("Total Charges: {}", total_charges_string);
         let pct_of_subtotal = charges_sum / subtotal;
         let pct_of_subtotal_string = format!("{}%", (pct_of_subtotal * 100.0).to_string()).red();
@@ -206,7 +206,6 @@ fn calculate_bill_total(input: &mut String, subtotal: f64) -> Option<f64> {
     match input.trim().parse() {
         Ok(bill_total) => {
             if bill_total >= subtotal {
-                println!("we in here");
                 return Some(bill_total);
             } else {
                 println!("Amount was less than subtotal. Please try again.");
