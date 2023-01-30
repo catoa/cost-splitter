@@ -1,3 +1,4 @@
+use crate::actions;
 use colored::Colorize;
 use std::collections::HashMap;
 use std::io;
@@ -7,51 +8,6 @@ use titlecase::titlecase;
 pub struct Charge {
     pub name: String,
     pub cost: f64,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Action {
-    Done,
-    AddCharge { charge: Charge },
-    PrintLastCharge,
-    DeleteLastCharge,
-    Invalid { msg: String },
-}
-
-impl Action {
-    pub fn parse_input(s: &str) -> Self {
-        let input: Vec<&str> = s.trim().split_whitespace().into_iter().collect();
-        if input.as_slice() == ["Done"] || input.as_slice() == ["done"] {
-            Action::Done
-        } else if input.as_slice() == ["Last"] || input.as_slice() == ["last"] {
-            Action::PrintLastCharge
-        } else if input.as_slice() == ["Delete"] || input.as_slice() == ["delete"] {
-            Action::DeleteLastCharge
-        } else if let Some((cost, elements)) = input.split_last() {
-            let cost = cost.trim().parse::<f64>().unwrap_or_else(|_| -1.0);
-            if cost == -1.0 {
-                return Action::Invalid {
-                    msg: String::from("Cost could not be parsed from string"),
-                };
-            };
-            let name = elements.join(" ");
-            if name == "" {
-                return Action::Invalid {
-                    msg: String::from("Could not parse line item because name was not supplied"),
-                };
-            }
-            let charge = Charge { name, cost };
-            println!(
-                "{} has been added\n",
-                titlecase(&charge.name).yellow().bold()
-            );
-            Action::AddCharge { charge }
-        } else {
-            Action::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            }
-        }
-    }
 }
 
 fn print_charge_breakdown(
@@ -106,53 +62,8 @@ pub fn gather_names(names: String) -> Vec<String> {
         .collect::<Vec<String>>()
 }
 
-fn read_from_stdin(msg: &mut String, error_msg: String) {
-    io::stdin().read_line(msg).expect(&error_msg);
-}
-
-fn handle_input_action(
-    action: Action,
-    input: &mut String,
-    charge_map: &mut HashMap<String, Vec<Charge>>,
-    subtotal: &mut f64,
-    person: String,
-) {
-    match action {
-        Action::Done => {
-            input.clear();
-        }
-        Action::AddCharge { charge } => {
-            *subtotal += charge.cost;
-
-            charge_map
-                .entry(person.to_string())
-                .or_insert_with(Vec::default)
-                .push(charge)
-        }
-        Action::PrintLastCharge => {
-            let charges = charge_map.get_mut(&person).unwrap();
-            match charges.last() {
-                Some(Charge { name, cost }) => {
-                    println!("Last item {} has a cost of {}.", name, cost);
-                }
-                None => println!("{} has no items to view.", person),
-            };
-        }
-        Action::DeleteLastCharge => {
-            let charges = charge_map.get_mut(&person).unwrap();
-            match charges.pop() {
-                Some(Charge { name, cost }) => {
-                    *subtotal -= cost;
-                    println!("{} was deleted.", name);
-                }
-                None => println!("There are no items to delete."),
-            };
-        }
-        Action::Invalid { ref msg } => {
-            println!("{}", msg);
-        }
-    }
-    input.clear();
+fn read_from_stdin(msg: &mut String, error_msg: &str) {
+    io::stdin().read_line(msg).expect(error_msg);
 }
 
 pub fn process_charges(names: String) {
@@ -176,11 +87,11 @@ pub fn process_charges(names: String) {
     for person in persons {
         println!("\nEntering items for {}", person.cyan());
         loop {
-            read_from_stdin(&mut input, String::from("Could not read input string"));
+            read_from_stdin(&mut input, "Could not read input string");
 
-            let action = Action::parse_input(&input);
+            let action = actions::Action::parse_input(&input);
 
-            handle_input_action(
+            actions::handle_input_action(
                 action.clone(),
                 &mut input,
                 &mut charge_map,
@@ -189,7 +100,7 @@ pub fn process_charges(names: String) {
             );
 
             match action {
-                Action::Done => break,
+                actions::Action::Done => break,
                 _ => continue,
             }
         }
@@ -201,7 +112,7 @@ pub fn process_charges(names: String) {
 fn calculate_bill_total(input: &mut String, subtotal: f64) -> Option<f64> {
     println!("\nEnter the total for the bill.");
 
-    read_from_stdin(input, String::from("Unable to read input string"));
+    read_from_stdin(input, "Unable to read input string");
 
     match input.trim().parse() {
         Ok(bill_total) => {
@@ -221,7 +132,7 @@ fn calculate_bill_total(input: &mut String, subtotal: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{gather_names, Action, Charge};
+    use super::gather_names;
 
     #[test]
     fn test_split_names_handles_leading_comma() {
@@ -243,62 +154,6 @@ mod tests {
         assert_eq!(
             gather_names(String::from(",Anthony,Caroline,")),
             vec!["Anthony", "Caroline"]
-        );
-    }
-
-    #[test]
-    fn test_action_parse_input() {
-        assert_eq!(Action::parse_input("done"), Action::Done);
-        assert_eq!(Action::parse_input("Done"), Action::Done);
-        assert_eq!(
-            Action::parse_input(" "),
-            Action::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            }
-        );
-        assert_eq!(
-            Action::parse_input(""),
-            Action::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            }
-        );
-        assert_eq!(Action::parse_input("last"), Action::PrintLastCharge);
-        assert_eq!(Action::parse_input("Last"), Action::PrintLastCharge);
-        assert_eq!(Action::parse_input("delete"), Action::DeleteLastCharge);
-        assert_eq!(Action::parse_input("Delete"), Action::DeleteLastCharge);
-
-        assert_eq!(
-            Action::parse_input("Steak Sandwich 20"),
-            Action::AddCharge {
-                charge: Charge {
-                    name: String::from("Steak Sandwich"),
-                    cost: 20.00
-                }
-            }
-        );
-
-        assert_eq!(
-            Action::parse_input("social smoker 8"),
-            Action::AddCharge {
-                charge: Charge {
-                    name: String::from("social smoker"),
-                    cost: 8.00
-                }
-            }
-        );
-
-        assert_eq!(
-            Action::parse_input("we don't have a price"),
-            Action::Invalid {
-                msg: String::from("Cost could not be parsed from string"),
-            }
-        );
-
-        assert_eq!(
-            Action::parse_input("48"),
-            Action::Invalid {
-                msg: String::from("Could not parse line item because name was not supplied"),
-            }
         );
     }
 }
