@@ -7,8 +7,9 @@ on:
 
 jobs:
   unit_tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
+      - run: brew install tesseract leptonica
       - run: cargo build --release
       - run: cargo test --verbose
