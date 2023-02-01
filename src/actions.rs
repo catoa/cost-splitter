@@ -121,7 +121,7 @@ fn test_action_parse_input() {
         Action::parse_input("Steak Sandwich 20"),
         Action::AddCharge {
             charge: Charge {
-                name: String::from("steak sandwich"),
+                name: String::from("Steak Sandwich"),
                 cost: 20.00
             }
         }
