@@ -1,5 +1,5 @@
 [package]
-name = "cost_splitter"
+name = "splitter"
 version = "0.1.0"
 authors = ["anthonycato <catoa0608@gmail.com>"]
 edition = "2018"
@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 titlecase = "1.0"
-clap = { version = "3.1.8", features = ["derive"] }
+clap = { version = "4.1.4", features = ["derive"] }
 colored = "2.0.0"
+leptess = "0.13.4"
