@@ -13,39 +13,41 @@ pub enum Action {
 }
 
 impl Action {
-    fn parse_line_item(input: Vec<&str>) -> Self {
-        if let Some((cost, elements)) = input.split_last() {
-            let cost = cost.trim().parse::<f64>().unwrap_or_else(|_| -1.0);
-            if cost == -1.0 {
-                return Action::Invalid {
-                    msg: String::from("Cost could not be parsed from string"),
-                };
-            };
-            let name = elements.join(" ");
-            if name == "" {
-                return Action::Invalid {
-                    msg: String::from("Could not parse line item because name was not supplied"),
-                };
-            }
-            let charge = Charge { name, cost };
-            println!(
-                "{} has been added\n",
-                titlecase(&charge.name).yellow().bold()
-            );
-            return Action::AddCharge { charge };
-        } else {
-            return Action::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            };
-        }
-    }
     pub fn parse_input(input: &str) -> Self {
-        let input: Vec<&str> = input.trim().split_whitespace().into_iter().collect();
-        match input.as_slice() {
-            ["done"] => Action::Done,
-            ["delete"] => Action::DeleteLastCharge,
-            ["last"] => Action::PrintLastCharge,
-            _ => Action::parse_line_item(input),
+        match input {
+            "done" => Action::Done,
+            "delete" => Action::DeleteLastCharge,
+            "last" => Action::PrintLastCharge,
+            _ => {
+                if let Some((cost, elements)) = input
+                    .trim()
+                    .split_whitespace()
+                    .into_iter()
+                    .collect::<Vec<&str>>()
+                    .split_last()
+                {
+                    let cost = cost.trim().parse::<f64>().unwrap_or_else(|_| -1.0);
+                    if cost == -1.0 {
+                        return Action::Invalid {
+                            msg: String::from("Cost could not be parsed from string"),
+                        };
+                    };
+                    let name = elements.join(" ");
+                    if name == "" {
+                        return Action::Invalid {
+                            msg: String::from(
+                                "Could not parse line item because name was not supplied",
+                            ),
+                        };
+                    }
+                    let charge = Charge { name, cost };
+                    return Action::AddCharge { charge };
+                } else {
+                    return Action::Invalid {
+                        msg: String::from("Supplied string did not match any pattern"),
+                    };
+                }
+            }
         }
     }
 }
@@ -64,6 +66,10 @@ pub fn handle_input_action(
         Action::AddCharge { charge } => {
             *subtotal += charge.cost;
 
+            println!(
+                "{} has been added\n",
+                titlecase(&charge.name).yellow().bold()
+            );
             charge_map
                 .entry(person.to_string())
                 .or_insert_with(Vec::default)
@@ -96,58 +102,59 @@ pub fn handle_input_action(
 }
 
 #[cfg(test)]
-#[test]
-fn test_action_parse_input() {
-    assert_eq!(Action::parse_input("done"), Action::Done);
-    // assert_eq!(Action::parse_input("Done"), Action::Done);
-    assert_eq!(
-        Action::parse_input(" "),
-        Action::Invalid {
-            msg: String::from("Supplied string did not match any pattern"),
-        }
-    );
-    assert_eq!(
-        Action::parse_input(""),
-        Action::Invalid {
-            msg: String::from("Supplied string did not match any pattern"),
-        }
-    );
-    assert_eq!(Action::parse_input("last"), Action::PrintLastCharge);
-    // assert_eq!(Action::parse_input("Last"), Action::PrintLastCharge);
-    assert_eq!(Action::parse_input("delete"), Action::DeleteLastCharge);
-    // assert_eq!(Action::parse_input("Delete"), Action::DeleteLastCharge);
+mod tests {
+    use super::{Action, Charge};
 
-    assert_eq!(
-        Action::parse_input("Steak Sandwich 20"),
-        Action::AddCharge {
-            charge: Charge {
-                name: String::from("Steak Sandwich"),
-                cost: 20.00
+    #[test]
+    fn test_action_parse_input() {
+        assert_eq!(Action::parse_input("done"), Action::Done);
+        assert_eq!(
+            Action::parse_input(" "),
+            Action::Invalid {
+                msg: String::from("Supplied string did not match any pattern"),
             }
-        }
-    );
-
-    assert_eq!(
-        Action::parse_input("social smoker 8"),
-        Action::AddCharge {
-            charge: Charge {
-                name: String::from("social smoker"),
-                cost: 8.00
+        );
+        assert_eq!(
+            Action::parse_input(""),
+            Action::Invalid {
+                msg: String::from("Supplied string did not match any pattern"),
             }
-        }
-    );
+        );
+        assert_eq!(Action::parse_input("last"), Action::PrintLastCharge);
+        assert_eq!(Action::parse_input("delete"), Action::DeleteLastCharge);
 
-    assert_eq!(
-        Action::parse_input("we don't have a price"),
-        Action::Invalid {
-            msg: String::from("Cost could not be parsed from string"),
-        }
-    );
+        assert_eq!(
+            Action::parse_input("Steak Sandwich 20"),
+            Action::AddCharge {
+                charge: Charge {
+                    name: String::from("Steak Sandwich"),
+                    cost: 20.00
+                }
+            }
+        );
 
-    assert_eq!(
-        Action::parse_input("48"),
-        Action::Invalid {
-            msg: String::from("Could not parse line item because name was not supplied"),
-        }
-    );
+        assert_eq!(
+            Action::parse_input("social smoker 8"),
+            Action::AddCharge {
+                charge: Charge {
+                    name: String::from("social smoker"),
+                    cost: 8.00
+                }
+            }
+        );
+
+        assert_eq!(
+            Action::parse_input("we don't have a price"),
+            Action::Invalid {
+                msg: String::from("Cost could not be parsed from string"),
+            }
+        );
+
+        assert_eq!(
+            Action::parse_input("48"),
+            Action::Invalid {
+                msg: String::from("Could not parse line item because name was not supplied"),
+            }
+        );
+    }
 }

@@ -24,15 +24,13 @@ enum Commands {
 
     #[command(arg_required_else_help = true)]
     Ocr {
-        // #[arg(short, long)]
+        #[arg(short, long)]
         receipt_path: PathBuf,
     },
 }
 
 fn main() {
     let cli = Cli::parse();
-
-    println!("{:?}", cli);
 
     match cli.command {
         Some(Commands::Charge { names }) => charges::process_charges(names),

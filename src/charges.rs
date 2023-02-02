@@ -1,8 +1,9 @@
 use crate::actions;
 use colored::Colorize;
 use std::collections::HashMap;
-use std::io;
 use titlecase::titlecase;
+
+use crate::utils::read_from_stdin;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Charge {
@@ -60,10 +61,6 @@ pub fn gather_names(names: String) -> Vec<String> {
             Some(name.to_owned())
         })
         .collect::<Vec<String>>()
-}
-
-fn read_from_stdin(msg: &mut String, error_msg: &str) {
-    io::stdin().read_line(msg).expect(error_msg);
 }
 
 pub fn process_charges(names: String) {
