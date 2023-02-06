@@ -3,12 +3,13 @@ use colored::Colorize;
 use std::collections::HashMap;
 use titlecase::titlecase;
 
-use crate::utils::read_from_stdin;
+use crate::utils::{get_values_by_delim, read_from_stdin};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Charge {
     pub name: String,
     pub cost: f64,
+    pub is_assigned: bool,
 }
 
 fn print_charge_breakdown(
@@ -51,23 +52,11 @@ fn print_charge_breakdown(
     }
 }
 
-pub fn gather_names(names: String) -> Vec<String> {
-    names
-        .split(",")
-        .filter_map(|name| {
-            if name.is_empty() {
-                return None;
-            }
-            Some(name.to_owned())
-        })
-        .collect::<Vec<String>>()
-}
-
 pub fn process_charges(names: String) {
     let mut charge_map: HashMap<String, Vec<Charge>> = HashMap::new();
     let mut subtotal: f64 = 0.0;
     let mut input = String::new();
-    let persons = gather_names(names);
+    let persons = get_values_by_delim(names, ",");
 
     println!("\nEnter the cost of the items for each person");
     println!(
@@ -86,7 +75,7 @@ pub fn process_charges(names: String) {
         loop {
             read_from_stdin(&mut input, "Could not read input string");
 
-            let action = actions::Action::parse_input(&input);
+            let action = actions::InputAction::parse(&input);
 
             actions::handle_input_action(
                 action.clone(),
@@ -97,7 +86,7 @@ pub fn process_charges(names: String) {
             );
 
             match action {
-                actions::Action::Done => break,
+                actions::InputAction::Done => break,
                 _ => continue,
             }
         }
@@ -124,33 +113,5 @@ fn calculate_bill_total(input: &mut String, subtotal: f64) -> Option<f64> {
             println!("Could not parse input, {}", input);
             calculate_bill_total(input, subtotal)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::gather_names;
-
-    #[test]
-    fn test_split_names_handles_leading_comma() {
-        assert_eq!(
-            gather_names(String::from(",Anthony,Caroline")),
-            vec!["Anthony", "Caroline"]
-        );
-    }
-    #[test]
-    fn test_split_names_handles_trailing_comma() {
-        assert_eq!(
-            gather_names(String::from("Anthony,Caroline,")),
-            vec!["Anthony", "Caroline"]
-        );
-    }
-
-    #[test]
-    fn test_split_names_handles_leading_and_trailing_comma() {
-        assert_eq!(
-            gather_names(String::from(",Anthony,Caroline,")),
-            vec!["Anthony", "Caroline"]
-        );
     }
 }
