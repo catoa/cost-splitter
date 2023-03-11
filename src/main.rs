@@ -26,15 +26,22 @@ enum Commands {
     Ocr {
         #[arg(short, long)]
         receipt_path: PathBuf,
+
+        #[arg(short, long)]
+        use_textract: bool,
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Charge { names }) => charges::process_charges(names),
-        Some(Commands::Ocr { receipt_path }) => ocr::process_receipt(receipt_path),
+        Some(Commands::Charge { names }) => charges::process_individual_charges(names),
+        Some(Commands::Ocr {
+            receipt_path,
+            use_textract,
+        }) => ocr::process_receipt(receipt_path, use_textract).await,
         _ => panic!(),
     }
 }

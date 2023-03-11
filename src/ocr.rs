@@ -1,58 +1,135 @@
 use crate::actions::InputAction;
+use crate::billing::print_charge_breakdown;
 use crate::charges::Charge;
 use crate::utils::read_from_stdin;
+use aws_config::load_from_env;
+use aws_sdk_textract::client::Client as AWSClient;
+use aws_sdk_textract::model::Document;
+use aws_sdk_textract::types::Blob;
 use colored::Colorize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-fn get_text_from_receipt(receipt_path: PathBuf) -> String {
+async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Vec<Charge> {
+    let config = load_from_env().await;
+    let client = AWSClient::new(&config);
+    let file = std::fs::read(receipt_path).unwrap();
+    let blob = Blob::new(file);
+    let document = Document::builder().set_bytes(Some(blob)).build();
+
+    let result = client
+        .analyze_expense()
+        .document(document)
+        .send()
+        .await
+        .unwrap();
+
+    let expense_docs = result.expense_documents().unwrap();
+    expense_docs
+        .iter()
+        .map(|doc| doc.line_item_groups.as_ref())
+        .flat_map(|line_item_groups| line_item_groups.unwrap())
+        .flat_map(|line_item_group| line_item_group.line_items.as_ref().unwrap())
+        .flat_map(|line_item_field| line_item_field.line_item_expense_fields.as_ref().unwrap())
+        .filter(|expense_field| {
+            expense_field
+                .r#type
+                .as_ref()
+                .unwrap()
+                .text
+                .as_ref()
+                .unwrap()
+                == "EXPENSE_ROW"
+        })
+        .filter_map(|expense_row| {
+            match InputAction::parse(
+                expense_row
+                    .value_detection
+                    .as_ref()
+                    .unwrap()
+                    .text
+                    .as_ref()
+                    .unwrap(),
+            ) {
+                InputAction::AddCharge { charge } => Some(charge),
+                _ => None,
+            }
+        })
+        .collect::<Vec<Charge>>()
+}
+
+fn get_charges_from_text(s: String) -> Vec<Charge> {
+    s.lines()
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| {
+            if let InputAction::AddCharge { charge } = InputAction::parse(line) {
+                Some(charge)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<Charge>>()
+}
+
+fn get_leptess_result(receipt_path: PathBuf) -> Vec<Charge> {
     let mut lt = leptess::LepTess::new(None, "eng").unwrap();
     match lt.set_image(receipt_path) {
-        Ok(_) => lt.get_utf8_text().unwrap(),
+        Ok(_) => {
+            let image_text = lt.get_utf8_text().unwrap();
+            get_charges_from_text(image_text)
+        }
         Err(_) => panic!("Unable to parse image content"),
     }
 }
 
-pub fn process_receipt(receipt_path: PathBuf) {
-    let image_text = get_text_from_receipt(receipt_path);
+async fn get_charges_from_receipt(receipt_path: PathBuf, use_textract: bool) -> Vec<Charge> {
+    if use_textract {
+        get_analyze_expenses_result(receipt_path).await
+    } else {
+        get_leptess_result(receipt_path)
+    }
+}
 
-    let mut approved_charges: Vec<Charge> = image_text
-        .lines()
-        .filter(|line| !line.is_empty())
-        .filter_map(|line| {
-            if let InputAction::AddCharge { charge } = InputAction::parse(line) {
-                return Some(charge);
-            } else {
-                return None;
-            }
-        })
-        .collect::<Vec<Charge>>();
+pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
+    let mut should_print_prompt = true;
+    let mut approved_charges = get_charges_from_receipt(receipt_path, use_textract).await;
+    let mut charges_map: HashMap<String, Vec<Charge>> = HashMap::new();
 
     println!("Parsed the following charges:");
     let mut input = String::new();
     loop {
-        // FIXME: How do we avoid cloning the vector?
-        for (idx, approved_charge) in approved_charges.clone().into_iter().enumerate() {
+        for (idx, approved_charge) in approved_charges.iter().enumerate() {
             println!("#{}: {:?}", idx + 1, approved_charge);
         }
-        println!("Need to delete any items?");
+
+        if should_print_prompt {
+            println!("Need to add or delete any items?");
+            should_print_prompt = false;
+        }
         read_from_stdin(&mut input, "Unable to parse message");
         let action = InputAction::parse(&input);
         match action {
             InputAction::Done => {
-                println!("approved_charges: {:?}", approved_charges);
-
-                input.clear();
-                break;
+                let unapproved_charges = approved_charges
+                    .iter()
+                    .filter(|charge| !charge.is_assigned)
+                    .collect::<Vec<&Charge>>();
+                if !unapproved_charges.is_empty() {
+                    eprintln!("There are still unassigned charges");
+                    continue;
+                } else {
+                    input.clear();
+                    let approved_subtotal = approved_charges.iter().map(|charge| charge.cost).sum();
+                    print_charge_breakdown(&mut input, &charges_map, approved_subtotal);
+                    break;
+                }
             }
             InputAction::DeleteByIndex { indices } => {
                 let mut remove_indices = indices
                     .iter()
                     .map(|idx| idx.parse::<usize>().ok().unwrap())
-                    .into_iter()
-                    .collect::<Vec<usize>>();
-
-                // Sort indices in reverse order so that they can be removed
-                // properly from the vector
+                    .collect::<Vec<usize>>(); // Sort indices in reverse order so that they can be removed
+                                              // properly from the vector
                 remove_indices.sort_by(|a, b| b.cmp(a));
 
                 for index in remove_indices.iter() {
@@ -62,9 +139,35 @@ pub fn process_receipt(receipt_path: PathBuf) {
                         format!("Removed: {} - {}", removed_charge.name, removed_charge.cost);
 
                     println!("{}", removed_msg.red());
+                    input.clear();
                 }
             }
-            InputAction::AssignCharge { name, index } => println!("assign {} to {}", name, index),
+            InputAction::AssignCharge { name, indices } => {
+                let assign_indices = indices
+                    .iter()
+                    .map(|idx| idx.parse::<usize>().ok().unwrap())
+                    .collect::<Vec<usize>>();
+
+                for index in assign_indices.iter() {
+                    let charge = approved_charges.get_mut(index - 1).unwrap();
+                    charge.is_assigned = true;
+
+                    let assigned_msg = format!("Assigned: {} - {}", charge.name, name);
+
+                    println!("{}", assigned_msg.blue());
+                    input.clear();
+
+                    charges_map
+                        .entry(name.to_string())
+                        .or_insert_with(Vec::default)
+                        .push(charge.to_owned());
+                }
+                input.clear();
+            }
+            InputAction::AddCharge { charge } => {
+                approved_charges.push(charge);
+                input.clear();
+            }
             _ => println!("unrecognized input"),
         }
     }
@@ -72,17 +175,57 @@ pub fn process_receipt(receipt_path: PathBuf) {
 
 #[cfg(test)]
 mod tests {
+    use super::{get_charges_from_text, Charge};
 
     #[test]
     fn read_test_receipt() {
-        let _expected = vec![
-            "Lorem 6.50",
-            "Ipsum 7.50",
-            "Dolor Sit 48.00",
-            "Amet 9.30",
-            "Consectetur 11.90",
-            "Adipiscing Elit 1.20",
-            "Sed Do 0.40",
+        let data = String::from(
+            "Lorem 6.50 \n
+            Ipsum 7.50 \n
+            Dolor Sit 48.00 \n
+            Amet 9.30 \n
+            Consectetur 11.90 \n
+            Adipiscing Elit 1.20 \n
+            Sed Do 0.40",
+        );
+        let actual = get_charges_from_text(data);
+        let expected = [
+            Charge {
+                name: "Lorem".to_string(),
+                cost: 6.5,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Ipsum".to_string(),
+                cost: 7.5,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Dolor Sit".to_string(),
+                cost: 48.00,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Amet".to_string(),
+                cost: 9.30,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Consectetur".to_string(),
+                cost: 11.90,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Adipiscing Elit".to_string(),
+                cost: 1.2,
+                is_assigned: false,
+            },
+            Charge {
+                name: "Sed Do".to_string(),
+                cost: 0.4,
+                is_assigned: false,
+            },
         ];
+        assert_eq!(actual, expected);
     }
 }

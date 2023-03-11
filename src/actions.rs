@@ -8,7 +8,7 @@ use titlecase::titlecase;
 #[derive(Debug, PartialEq, Clone)]
 pub enum InputAction {
     AddCharge { charge: Charge },
-    AssignCharge { name: String, index: usize },
+    AssignCharge { name: String, indices: Vec<String> },
     PrintLastCharge,
     DeleteLastCharge,
     DeleteByIndex { indices: Vec<String> },
@@ -23,15 +23,11 @@ impl InputAction {
             "delete" | "Delete" => InputAction::DeleteLastCharge,
             "last" | "Last" => InputAction::PrintLastCharge,
             _ => {
-                if let Some((val, text)) = input
-                    .trim()
-                    .split_whitespace()
-                    .into_iter()
-                    .collect::<Vec<&str>>()
-                    .split_last()
+                if let Some((val, text)) =
+                    input.split_whitespace().collect::<Vec<&str>>().split_last()
                 {
                     let name = text.join(" ");
-                    if name == "" {
+                    if name.is_empty() {
                         return InputAction::Invalid {
                             msg: String::from(
                                 "Could not parse line item because name was not supplied",
@@ -41,34 +37,39 @@ impl InputAction {
                     match name.to_lowercase().as_ref() {
                         "delete" => {
                             let val = get_values_by_delim(val.to_string(), ",");
-
-                            return InputAction::DeleteByIndex { indices: val };
-                        }
-                        "assign" => {
-                            return InputAction::AssignCharge {
-                                name: "Marlon".to_string(),
-                                index: 1 as usize,
-                            };
+                            InputAction::DeleteByIndex { indices: val }
                         }
                         _ => {
-                            let val = val.parse::<f64>().unwrap_or_else(|_| -1.0);
-                            if val == -1.0 {
-                                return InputAction::Invalid {
-                                    msg: String::from("Value could not be parsed from string"),
+                            if name.starts_with("assign") {
+                                let val = get_values_by_delim(val.to_string(), ",");
+                                let mut name_iter = name.split_whitespace();
+
+                                name_iter.next();
+                                let person = name_iter.next().unwrap();
+                                InputAction::AssignCharge {
+                                    name: person.to_owned(),
+                                    indices: val,
+                                }
+                            } else {
+                                let val = val.parse::<f64>().unwrap_or_else(|_| -1.0);
+                                if val == -1.0 {
+                                    return InputAction::Invalid {
+                                        msg: String::from("Value could not be parsed from string"),
+                                    };
                                 };
-                            };
-                            let charge = Charge {
-                                name,
-                                cost: val,
-                                is_assigned: false,
-                            };
-                            return InputAction::AddCharge { charge };
+                                let charge = Charge {
+                                    name,
+                                    cost: val,
+                                    is_assigned: false,
+                                };
+                                InputAction::AddCharge { charge }
+                            }
                         }
                     }
                 } else {
-                    return InputAction::Invalid {
+                    InputAction::Invalid {
                         msg: String::from("Supplied string did not match any pattern"),
-                    };
+                    }
                 }
             }
         }
@@ -124,11 +125,10 @@ pub fn handle_input_action(
                 None => println!("There are no items to delete."),
             };
         }
-        InputAction::Invalid { ref msg } => {
+        InputAction::Invalid { msg } => {
             println!("{}", msg);
         }
-        InputAction::DeleteByIndex { indices: _ }
-        | InputAction::AssignCharge { name: _, index: _ } => {
+        _ => {
             println!("Unsupported operation");
         }
     }
@@ -167,7 +167,6 @@ mod tests {
                 }
             }
         );
-
         assert_eq!(
             InputAction::parse("social smoker 8"),
             InputAction::AddCharge {
@@ -182,7 +181,7 @@ mod tests {
         assert_eq!(
             InputAction::parse("we don't have a price"),
             InputAction::Invalid {
-                msg: String::from("Cost could not be parsed from string"),
+                msg: String::from("Value could not be parsed from string"),
             }
         );
 
