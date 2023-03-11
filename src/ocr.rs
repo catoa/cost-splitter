@@ -110,6 +110,7 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
         let action = InputAction::parse(&input);
         match action {
             InputAction::Done => {
+                input.clear();
                 let unapproved_charges = approved_charges
                     .iter()
                     .filter(|charge| !charge.is_assigned)
@@ -118,7 +119,6 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                     eprintln!("There are still unassigned charges");
                     continue;
                 } else {
-                    input.clear();
                     let approved_subtotal = approved_charges.iter().map(|charge| charge.cost).sum();
                     print_charge_breakdown(&mut input, &charges_map, approved_subtotal);
                     break;
@@ -168,7 +168,9 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                 approved_charges.push(charge);
                 input.clear();
             }
-            _ => println!("unrecognized input"),
+            _ => {
+                println!("unrecognized input")
+            }
         }
     }
 }
