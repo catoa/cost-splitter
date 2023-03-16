@@ -58,7 +58,7 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Vec<Charge> {
         .collect::<Vec<Charge>>()
 }
 
-fn get_charges_from_text(s: String) -> Vec<Charge> {
+pub fn get_charges_from_text(s: String) -> Vec<Charge> {
     s.lines()
         .filter(|line| !line.is_empty())
         .filter_map(|line| {
@@ -175,59 +175,3 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{get_charges_from_text, Charge};
-
-    #[test]
-    fn read_test_receipt() {
-        let data = String::from(
-            "Lorem 6.50 \n
-            Ipsum 7.50 \n
-            Dolor Sit 48.00 \n
-            Amet 9.30 \n
-            Consectetur 11.90 \n
-            Adipiscing Elit 1.20 \n
-            Sed Do 0.40",
-        );
-        let actual = get_charges_from_text(data);
-        let expected = [
-            Charge {
-                name: "Lorem".to_string(),
-                cost: 6.5,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Ipsum".to_string(),
-                cost: 7.5,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Dolor Sit".to_string(),
-                cost: 48.00,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Amet".to_string(),
-                cost: 9.30,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Consectetur".to_string(),
-                cost: 11.90,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Adipiscing Elit".to_string(),
-                cost: 1.2,
-                is_assigned: false,
-            },
-            Charge {
-                name: "Sed Do".to_string(),
-                cost: 0.4,
-                is_assigned: false,
-            },
-        ];
-        assert_eq!(actual, expected);
-    }
-}

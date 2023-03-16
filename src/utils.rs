@@ -14,31 +14,3 @@ pub fn get_values_by_delim(s: String, delim: &str) -> Vec<String> {
         })
         .collect::<Vec<String>>()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::get_values_by_delim;
-
-    #[test]
-    fn test_split_names_handles_leading_comma() {
-        assert_eq!(
-            get_values_by_delim(String::from(",Anthony,Caroline"), ","),
-            vec!["Anthony", "Caroline"]
-        );
-    }
-    #[test]
-    fn test_split_names_handles_trailing_comma() {
-        assert_eq!(
-            get_values_by_delim(String::from("Anthony,Caroline,"), ","),
-            vec!["Anthony", "Caroline"]
-        );
-    }
-
-    #[test]
-    fn test_split_names_handles_leading_and_trailing_comma() {
-        assert_eq!(
-            get_values_by_delim(String::from(",Anthony,Caroline,"), ","),
-            vec!["Anthony", "Caroline"]
-        );
-    }
-}
