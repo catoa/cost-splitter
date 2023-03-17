@@ -1,27 +1,23 @@
 #[cfg(test)]
 mod tests {
-    use splitter::{actions::InputAction, charges::Charge};
+    use splitter::{actions::InputAction, actions::ParseActionError, charges::Charge};
 
     #[test]
     fn test_parse_input_action() {
-        assert_eq!(InputAction::parse("done"), InputAction::Done);
+        assert_eq!("done".parse::<InputAction>().unwrap(), InputAction::Done);
+        assert_eq!(" ".parse::<InputAction>(), Err(ParseActionError));
+        assert_eq!("".parse::<InputAction>(), Err(ParseActionError));
         assert_eq!(
-            InputAction::parse(" "),
-            InputAction::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            }
+            "last".parse::<InputAction>().unwrap(),
+            InputAction::PrintLastCharge
         );
         assert_eq!(
-            InputAction::parse(""),
-            InputAction::Invalid {
-                msg: String::from("Supplied string did not match any pattern"),
-            }
+            "delete".parse::<InputAction>().unwrap(),
+            InputAction::DeleteLastCharge
         );
-        assert_eq!(InputAction::parse("last"), InputAction::PrintLastCharge);
-        assert_eq!(InputAction::parse("delete"), InputAction::DeleteLastCharge);
 
         assert_eq!(
-            InputAction::parse("Steak Sandwich 20"),
+            "Steak Sandwich 20".parse::<InputAction>().unwrap(),
             InputAction::AddCharge {
                 charge: Charge {
                     name: String::from("Steak Sandwich"),
@@ -31,7 +27,7 @@ mod tests {
             }
         );
         assert_eq!(
-            InputAction::parse("social smoker 8"),
+            "social smoker 8".parse::<InputAction>().unwrap(),
             InputAction::AddCharge {
                 charge: Charge {
                     name: String::from("social smoker"),
@@ -42,17 +38,10 @@ mod tests {
         );
 
         assert_eq!(
-            InputAction::parse("we don't have a price"),
-            InputAction::Invalid {
-                msg: String::from("Value could not be parsed from string"),
-            }
+            "we don't have a price".parse::<InputAction>(),
+            Err(ParseActionError)
         );
 
-        assert_eq!(
-            InputAction::parse("48"),
-            InputAction::Invalid {
-                msg: String::from("Could not parse line item because name was not supplied"),
-            }
-        );
+        assert_eq!("48".parse::<InputAction>(), Err(ParseActionError));
     }
 }

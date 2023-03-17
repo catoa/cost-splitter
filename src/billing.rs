@@ -48,7 +48,7 @@ pub fn print_charge_breakdown(
         let total_charges_string = format!("${:.2}", charges_sum).green();
         println!("Total Charges: {}", total_charges_string);
         let pct_of_subtotal = charges_sum / subtotal;
-        let pct_of_subtotal_string = format!("{}%", (pct_of_subtotal * 100.0)).red();
+        let pct_of_subtotal_string = format!("{:.2?}%", (pct_of_subtotal * 100.0)).red();
         if pct_of_subtotal < 1.0 {
             println!(
                 "Percent of Subtotal (Total Charges / Subtotal): {}",

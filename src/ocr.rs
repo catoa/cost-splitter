@@ -25,6 +25,7 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Vec<Charge> {
         .unwrap();
 
     let expense_docs = result.expense_documents().unwrap();
+
     expense_docs
         .iter()
         .map(|doc| doc.line_item_groups.as_ref())
@@ -42,16 +43,16 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Vec<Charge> {
                 == "EXPENSE_ROW"
         })
         .filter_map(|expense_row| {
-            match InputAction::parse(
-                expense_row
+            match expense_row
                     .value_detection
                     .as_ref()
                     .unwrap()
                     .text
                     .as_ref()
-                    .unwrap(),
-            ) {
-                InputAction::AddCharge { charge } => Some(charge),
+                    .unwrap()
+                    .parse::<InputAction>()
+             {
+                Ok(InputAction::AddCharge { charge }) => Some(charge),
                 _ => None,
             }
         })
@@ -62,7 +63,7 @@ pub fn get_charges_from_text(s: String) -> Vec<Charge> {
     s.lines()
         .filter(|line| !line.is_empty())
         .filter_map(|line| {
-            if let InputAction::AddCharge { charge } = InputAction::parse(line) {
+            if let Ok(InputAction::AddCharge { charge }) = line.parse::<InputAction>() {
                 Some(charge)
             } else {
                 None
@@ -107,9 +108,9 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
             should_print_prompt = false;
         }
         read_from_stdin(&mut input, "Unable to parse message");
-        let action = InputAction::parse(&input);
+        let action = input.parse::<InputAction>();
         match action {
-            InputAction::Done => {
+            Ok(InputAction::Done) => {
                 input.clear();
                 let unapproved_charges = approved_charges
                     .iter()
@@ -124,7 +125,7 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                     break;
                 }
             }
-            InputAction::DeleteByIndex { indices } => {
+            Ok(InputAction::DeleteByIndex { indices }) => {
                 let mut remove_indices = indices
                     .iter()
                     .map(|idx| idx.parse::<usize>().ok().unwrap())
@@ -142,7 +143,7 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                     input.clear();
                 }
             }
-            InputAction::AssignCharge { name, indices } => {
+            Ok(InputAction::AssignCharge { name, indices }) => {
                 let assign_indices = indices
                     .iter()
                     .map(|idx| idx.parse::<usize>().ok().unwrap())
@@ -164,14 +165,14 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                 }
                 input.clear();
             }
-            InputAction::AddCharge { charge } => {
+            Ok(InputAction::AddCharge { charge }) => {
                 approved_charges.push(charge);
                 input.clear();
             }
-            _ => {
-                println!("unrecognized input")
+            Ok(InputAction::DeleteLastCharge) | Ok(InputAction::PrintLastCharge)  => println!("unsupported action"),
+            Err(e) => {
+                println!("Unrecognized input: {e:?}")
             }
         }
     }
 }
-
