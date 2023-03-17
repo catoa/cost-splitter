@@ -1,7 +1,6 @@
 use crate::{actions::InputAction, billing};
 use colored::Colorize;
 use std::collections::HashMap;
-use std::str::FromStr;
 use titlecase::titlecase;
 
 use crate::utils::{get_values_by_delim, read_from_stdin};
@@ -22,27 +21,6 @@ impl Charge {
             name,
             cost,
             is_assigned: false,
-        }
-    }
-}
-
-impl FromStr for Charge {
-    type Err = ParseChargeError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some((val, text)) = s.split_whitespace().collect::<Vec<&str>>().split_last() {
-            match val.parse::<f64>() {
-                Ok(cost) => {
-                    let name = text.join(" ");
-                    if name.is_empty() {
-                        return Err(ParseChargeError);
-                    }
-                    Ok(Charge::new(name, cost))
-                }
-                Err(_) => Err(ParseChargeError),
-            }
-        } else {
-            Err(ParseChargeError)
         }
     }
 }

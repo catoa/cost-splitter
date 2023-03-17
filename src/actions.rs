@@ -41,8 +41,8 @@ impl FromStr for InputAction {
                         }
                         _ => {
                             let cost = val.parse::<f64>().unwrap_or(-1.0);
-                            if cost > 0.0 {
-                                let name = text.join(" ");
+                            let name = text.join(" ");
+                            if cost > 0.0 && !name.is_empty() {
                                 let charge = Charge::new(name, cost);
                                 Ok(InputAction::AddCharge { charge })
                             } else {
