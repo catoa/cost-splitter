@@ -23,7 +23,7 @@ fn build_document(path: PathBuf) -> Document {
     Document::builder().bytes(blob).build()
 }
 
-async fn get_analyze_expenses_result(receipt_path: PathBuf) -> anyhow::Result<Vec<Charge>> {
+async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Result<Vec<Charge>> {
     let client = get_aws_client().await;
     let document = build_document(receipt_path);
     let analyze_expense_output = client.analyze_expense().document(document).send().await;
@@ -62,46 +62,9 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> anyhow::Result<Ve
     }
 }
 
-pub fn get_charges_from_text(s: String) -> Vec<Charge> {
-    s.lines()
-        .filter(|line| !line.is_empty())
-        .filter_map(|line| {
-            if let Ok(InputAction::AddCharge { charge }) = line.parse::<InputAction>() {
-                Some(charge)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<Charge>>()
-}
-
-fn get_leptess_result(receipt_path: PathBuf) -> Result<Vec<Charge>> {
-    let mut lt = leptess::LepTess::new(None, "eng").unwrap();
-    match lt.set_image(receipt_path) {
-        Ok(_) => {
-            let image_text = lt.get_utf8_text().unwrap();
-            Ok(get_charges_from_text(image_text))
-        }
-        Err(_) => panic!("Unable to parse image content"),
-    }
-}
-
-async fn get_charges_from_receipt(
-    receipt_path: PathBuf,
-    use_textract: bool,
-) -> Result<Vec<Charge>> {
-    if use_textract {
-        get_analyze_expenses_result(receipt_path).await
-    } else {
-        get_leptess_result(receipt_path)
-    }
-}
-
-pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
+pub async fn process_receipt(receipt_path: PathBuf) {
     let mut should_print_prompt = true;
-    let mut approved_charges = get_charges_from_receipt(receipt_path, use_textract)
-        .await
-        .unwrap();
+    let mut approved_charges = get_analyze_expenses_result(receipt_path).await.unwrap();
     let mut charges_map: HashMap<String, Vec<Charge>> = HashMap::new();
 
     println!("Parsed the following charges:");

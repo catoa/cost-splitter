@@ -26,9 +26,6 @@ enum Commands {
     Ocr {
         #[arg(short, long)]
         receipt_path: PathBuf,
-
-        #[arg(short, long)]
-        use_textract: bool,
     },
 }
 
@@ -38,10 +35,7 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Charge { names }) => charges::process_individual_charges(names),
-        Some(Commands::Ocr {
-            receipt_path,
-            use_textract,
-        }) => ocr::process_receipt(receipt_path, use_textract).await,
+        Some(Commands::Ocr { receipt_path }) => ocr::process_receipt(receipt_path).await,
         _ => panic!(),
     }
 }

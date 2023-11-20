@@ -9,8 +9,11 @@ jobs:
   unit_tests:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
-      - run: brew install tesseract leptonica
-      - run: |
-          cargo test
-          cargo build --release
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Cargo Build
+        run: cargo build
+
+      - name: Cargo Test
+        run: cargo test
