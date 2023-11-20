@@ -13,7 +13,7 @@ pub struct Charge {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ParseChargeError;
+pub struct ParseChargeErrorP;
 
 impl Charge {
     pub fn new(name: String, cost: f64) -> Self {
@@ -65,7 +65,7 @@ pub fn process_individual_charges(names: String) {
                     );
                     charge_map
                         .entry(person.to_string())
-                        .or_insert_with(Vec::default)
+                        .or_default()
                         .push(charge)
                 }
                 Ok(InputAction::PrintLastCharge) => {
