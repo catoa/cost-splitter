@@ -1,9 +1,9 @@
+use crate::utils::{get_values_by_delim, read_from_stdin};
 use crate::{actions::InputAction, billing};
+use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashMap;
 use titlecase::titlecase;
-
-use crate::utils::{get_values_by_delim, read_from_stdin};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Charge {
@@ -25,7 +25,7 @@ impl Charge {
     }
 }
 
-pub fn process_individual_charges(names: String) {
+pub fn process_individual_charges(names: String) -> Result<()> {
     let mut charge_map: HashMap<String, Vec<Charge>> = HashMap::new();
     let mut subtotal: f64 = 0.0;
     let mut input = String::new();
@@ -112,5 +112,6 @@ pub fn process_individual_charges(names: String) {
         }
     }
     input.clear();
-    billing::print_charge_breakdown(&mut input, &charge_map, subtotal)
+    billing::print_charge_breakdown(&mut input, &charge_map, subtotal);
+    Ok(())
 }

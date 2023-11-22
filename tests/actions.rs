@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use splitter::{actions::InputAction, actions::ParseActionError, charges::Charge};
+    use splitter::{actions::InputAction, actions::ParseInputActionError, charges::Charge};
 
     #[test]
     fn test_parse_input_action() {
         assert_eq!("done".parse::<InputAction>().unwrap(), InputAction::Done);
-        assert_eq!(" ".parse::<InputAction>(), Err(ParseActionError));
-        assert_eq!("".parse::<InputAction>(), Err(ParseActionError));
+        assert_eq!(" ".parse::<InputAction>(), Err(ParseInputActionError));
+        assert_eq!("".parse::<InputAction>(), Err(ParseInputActionError));
         assert_eq!(
             "last".parse::<InputAction>().unwrap(),
             InputAction::PrintLastCharge
@@ -39,9 +39,9 @@ mod tests {
 
         assert_eq!(
             "we don't have a price".parse::<InputAction>(),
-            Err(ParseActionError)
+            Err(ParseInputActionError)
         );
 
-        assert_eq!("48".parse::<InputAction>(), Err(ParseActionError));
+        assert_eq!("48".parse::<InputAction>(), Err(ParseInputActionError));
     }
 }

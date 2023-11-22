@@ -14,10 +14,10 @@ pub enum InputAction {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ParseActionError;
+pub struct ParseInputActionError;
 
 impl FromStr for InputAction {
-    type Err = ParseActionError;
+    type Err = ParseInputActionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.trim() {
@@ -46,12 +46,12 @@ impl FromStr for InputAction {
                                 let charge = Charge::new(name, cost);
                                 Ok(InputAction::AddCharge { charge })
                             } else {
-                                Err(ParseActionError)
+                                Err(ParseInputActionError)
                             }
                         }
                     }
                 } else {
-                    Err(ParseActionError)
+                    Err(ParseInputActionError)
                 }
             }
         }

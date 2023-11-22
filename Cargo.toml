@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 titlecase = "2.2.1"
-clap = { versior = "4.4.8", features = ["derive"] }
+clap = { version = "4.4.8", features = ["derive"] }
 colored = "2.0.4"
 aws-config = { version = "0.101.0", features = ["behavior-version-latest"] }
 aws-sdk-textract = "0.38.0"

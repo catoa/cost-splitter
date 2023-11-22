@@ -62,9 +62,9 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Result<Vec<Charge
     }
 }
 
-pub async fn process_receipt(receipt_path: PathBuf) {
+pub async fn process_receipt(receipt_path: PathBuf) -> Result<()> {
     let mut should_print_prompt = true;
-    let mut approved_charges = get_analyze_expenses_result(receipt_path).await.unwrap();
+    let mut approved_charges = get_analyze_expenses_result(receipt_path).await?;
     let mut charges_map: HashMap<String, Vec<Charge>> = HashMap::new();
 
     println!("Parsed the following charges:");
@@ -83,17 +83,15 @@ pub async fn process_receipt(receipt_path: PathBuf) {
         match action {
             Ok(InputAction::Done) => {
                 input.clear();
-                let unapproved_charges = approved_charges
-                    .iter()
-                    .filter(|charge| !charge.is_assigned)
-                    .collect::<Vec<&Charge>>();
-                if !unapproved_charges.is_empty() {
+                let has_unapproved_charges =
+                    approved_charges.iter().any(|charge| !charge.is_assigned);
+                // .collect::<Vec<&Charge>>();
+                if has_unapproved_charges {
                     eprintln!("There are still unassigned charges");
                     continue;
                 } else {
                     let approved_subtotal = approved_charges.iter().map(|charge| charge.cost).sum();
-                    print_charge_breakdown(&mut input, &charges_map, approved_subtotal);
-                    break;
+                    print_charge_breakdown(&mut input, &charges_map, approved_subtotal)
                 }
             }
             Ok(InputAction::DeleteByIndex { indices }) => {
@@ -141,7 +139,7 @@ pub async fn process_receipt(receipt_path: PathBuf) {
                 input.clear();
             }
             Ok(InputAction::DeleteLastCharge) | Ok(InputAction::PrintLastCharge) => {
-                println!("unsupported action")
+                println!("Unsupported action")
             }
             Err(e) => {
                 println!("Unrecognized input: {e:?}")

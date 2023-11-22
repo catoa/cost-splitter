@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use splitter::{charges, ocr};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "splitter")]
@@ -30,12 +30,12 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
         Some(Commands::Charge { names }) => charges::process_individual_charges(names),
         Some(Commands::Ocr { receipt_path }) => ocr::process_receipt(receipt_path).await,
-        _ => panic!(),
+        None => panic!("Unknown CLI command supplied"),
     }
 }
