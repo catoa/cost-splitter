@@ -14,9 +14,22 @@ Alternatively, you can clone this project and run it with `cargo run charge --na
 
 `splitter charge --names "Tony,Carl"`
 
-This will trigger a prompt to enter the names and prices of the items that were purchased/ordered by each person. At the end you will receive a breakdown of which items
+This will trigger a prompt to enter the names and prices of the items that were purchased/ordered by each person. At the end you will receive a breakdown of what each individual owes.
 
-To-Dos
+```
+Tony
+==========
+Ribeye: $20.00
+Total Charges: $20.00
+Percent of Subtotal (Total Charges / Subtotal): 33.33%
+Fees owed: $13.33
+Total Owed: $33.33
 
-- Add docs of example usage
-- Add Dockerfile to run as executable
+Carl
+==========
+Chicken: $40.00
+Total Charges: $40.00
+Percent of Subtotal (Total Charges / Subtotal): 66.67%
+Fees owed: $26.67
+Total Owed: $66.67
+```
