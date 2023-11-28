@@ -44,14 +44,14 @@ async fn get_analyze_expenses_result(receipt_path: PathBuf) -> Vec<Charge> {
         })
         .filter_map(|expense_row| {
             match expense_row
-                    .value_detection
-                    .as_ref()
-                    .unwrap()
-                    .text
-                    .as_ref()
-                    .unwrap()
-                    .parse::<InputAction>()
-             {
+                .value_detection
+                .as_ref()
+                .unwrap()
+                .text
+                .as_ref()
+                .unwrap()
+                .parse::<InputAction>()
+            {
                 Ok(InputAction::AddCharge { charge }) => Some(charge),
                 _ => None,
             }
@@ -72,28 +72,9 @@ pub fn get_charges_from_text(s: String) -> Vec<Charge> {
         .collect::<Vec<Charge>>()
 }
 
-fn get_leptess_result(receipt_path: PathBuf) -> Vec<Charge> {
-    let mut lt = leptess::LepTess::new(None, "eng").unwrap();
-    match lt.set_image(receipt_path) {
-        Ok(_) => {
-            let image_text = lt.get_utf8_text().unwrap();
-            get_charges_from_text(image_text)
-        }
-        Err(_) => panic!("Unable to parse image content"),
-    }
-}
-
-async fn get_charges_from_receipt(receipt_path: PathBuf, use_textract: bool) -> Vec<Charge> {
-    if use_textract {
-        get_analyze_expenses_result(receipt_path).await
-    } else {
-        get_leptess_result(receipt_path)
-    }
-}
-
-pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
+pub async fn process_receipt(receipt_path: PathBuf) {
     let mut should_print_prompt = true;
-    let mut approved_charges = get_charges_from_receipt(receipt_path, use_textract).await;
+    let mut approved_charges = get_analyze_expenses_result(receipt_path).await;
     let mut charges_map: HashMap<String, Vec<Charge>> = HashMap::new();
 
     println!("Parsed the following charges:");
@@ -169,7 +150,9 @@ pub async fn process_receipt(receipt_path: PathBuf, use_textract: bool) {
                 approved_charges.push(charge);
                 input.clear();
             }
-            Ok(InputAction::DeleteLastCharge) | Ok(InputAction::PrintLastCharge)  => println!("unsupported action"),
+            Ok(InputAction::DeleteLastCharge) | Ok(InputAction::PrintLastCharge) => {
+                println!("unsupported action")
+            }
             Err(e) => {
                 println!("Unrecognized input: {e:?}")
             }
