@@ -34,8 +34,12 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Commands::Charge { names }) => charges::process_individual_charges(names),
-        Some(Commands::Ocr { receipt_path }) => ocr::process_receipt(receipt_path).await,
+        Some(Commands::Charge { names }) => {
+            charges::process_individual_charges(names).map_err(|e| anyhow::anyhow!(e))
+        },
+        Some(Commands::Ocr { receipt_path }) => {
+            ocr::process_receipt(receipt_path).await.map_err(|e| anyhow::anyhow!(e))
+        },
         None => panic!("Unknown CLI command supplied"),
     }
 }

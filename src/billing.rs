@@ -1,9 +1,40 @@
 use crate::charges::Charge;
-use crate::utils::read_from_stdin;
+use crate::errors::Result;
+use crate::io::{InputReader, OutputWriter};
+use crate::utils::{read_from_stdin, read_input};
 use colored::Colorize;
 use std::collections::HashMap;
 use titlecase::titlecase;
 
+/// Calculate bill total with dependency injection for testing
+#[allow(dead_code)]  // Function intended for future refactoring
+fn calculate_bill_total_with_io<R: InputReader, W: OutputWriter>(
+    reader: &mut R,
+    writer: &mut W,
+    subtotal: f64,
+) -> Result<f64> {
+    writeln!(writer, "\nEnter the total for the bill.")?;
+    
+    let mut input = String::new();
+    read_input(reader, &mut input)?;
+
+    match input.trim().parse::<f64>() {
+        Ok(bill_total) => {
+            if bill_total >= subtotal {
+                Ok(bill_total)
+            } else {
+                writeln!(writer, "Amount was less than subtotal. Please try again.")?;
+                calculate_bill_total_with_io(reader, writer, subtotal)
+            }
+        }
+        Err(_) => {
+            writeln!(writer, "Could not parse input, {}", input.trim())?;
+            calculate_bill_total_with_io(reader, writer, subtotal)
+        }
+    }
+}
+
+/// Legacy function for backwards compatibility
 fn calculate_bill_total(input: &mut String, subtotal: f64) -> Option<f64> {
     println!("\nEnter the total for the bill.");
 

@@ -1,8 +1,8 @@
 use crate::actions::InputAction;
 use crate::billing::print_charge_breakdown;
 use crate::charges::Charge;
+use crate::errors::Result;
 use crate::utils::read_from_stdin;
-use anyhow::Result;
 use aws_config::load_from_env;
 use aws_sdk_textract::client::Client as AWSClient;
 use aws_sdk_textract::error::DisplayErrorContext;
